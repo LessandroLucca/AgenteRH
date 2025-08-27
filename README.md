@@ -9,6 +9,7 @@
 
 # Comandos para instalar as extensões do Python
 > pip install openpyxl
+
 > pip install pandas
 
 Nesse repositório existem os seguintes arquivos:
@@ -50,23 +51,23 @@ E:\run.bat
 
 # RESUMO DAS ETAPAS EXECUTADAS PELO run.bat
 
-# Descompacta as planilhas para a pasta .\Dados
+* Descompacta as planilhas para a pasta .\Dados
 > 7z e -o".\dados" "Desafio 4 - Dados.zip"
 
-# Executa o comando para converter as planilhas XLSX no diretório .\dados, para CSV no diretório atual
+* Executa o comando para converter as planilhas XLSX no diretório .\dados, para CSV no diretório atual
 > python 1_XLSX_TO_CSV.py
 
-# Executa o comando para gerar o script SQL contendo o esquema(CREATE TABLE apenas), para ser usado no prompt posteriormente (Será gerado o arquivo schema.sql)
+* Executa o comando para gerar o script SQL contendo o esquema(CREATE TABLE apenas), para ser usado no prompt posteriormente (Será gerado o arquivo schema.sql)
 > python 2_CSV_TO_SQL.py -o NOINSERT .\
 
-# Executa o comando para gerar o script SQL completo, para migrar os dados do CSV para o banco PostgreSQL (Será gerado o arquivo script.sql)
+* Executa o comando para gerar o script SQL completo, para migrar os dados do CSV para o banco PostgreSQL (Será gerado o arquivo script.sql)
 > python 2_CSV_TO_SQL.py -o script.sql .\
 
-# Executa o comando para popular os dados do CSV no banco agente_rh no PostgreSQL
+* Executa o comando para popular os dados do CSV no banco agente_rh no PostgreSQL
 > createdb -U postgres agente_rh
 > psql -U postgres -d agente_rh -f .\script.sql
 
-# Gera o arquivo ZIP temporário, contendo os parâmetros de entrada para o agente no N8N em E:\RH.zip
+* Gera o arquivo ZIP temporário, contendo os parâmetros de entrada para o agente no N8N em E:\RH.zip
 > 7z a %TMPZIP% %QUERIE% %PRMPTS% %SCHEMA% %TABLES%
 
 OBS: O arquivo ZIP deve estar previamente gerado e presente na pasta E:\shared, para a execução do gatilho do Workflow
