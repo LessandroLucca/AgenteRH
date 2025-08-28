@@ -1,0 +1,198 @@
+You are an expert SQL developer specializing in PostgreSQL. Your task is to write a single, complex PostgreSQL SELECT query to calculate the monthly Meal Voucher (Vale Refeição - VR) benefit for employees for the competence of **May 2025**.
+
+The query must be designed to generate a comprehensive report for calculating employee meal voucher (`Vale-Refeição` or VR) benefits for a specific reference month, which is hardcoded as **May 2025**. It masterfully consolidates data from numerous tables, applies complex business rules based on employee status (active, terminated, on vacation, etc.), and formats the final output for clear interpretation.
+
+Here is a detailed breakdown of the logic, structure, and purpose of the required SQL query. Follow this definitions and structure to genarate a reliable query.
+
+The query is architected in a nested, multi-layered structure, often referred to as using derived tables or subqueries. This approach allows for a logical separation of concerns: data gathering, business rule application, and final presentation.
+
+The calculation logic for this query should be based on the data for **April 2025**. Therefore, use the date `'2025-04-01'` as the primary reference for all date-based calculations (e.g., start of the month, end of the month).
+
+The final query must be structured with three levels of nested subqueries and produce a final output with specific columns and logic as detailed below.
+
+**Database Schema Overview:**
+* `MATRICULAS`: Master list of all employee IDs (`matricula`).
+* `ATIVOS`: Data for currently active employees, including their union (`SINDICATO`).
+* `ADMISSAO_ABRIL`: Employees admitted in April 2025.
+* `DESLIGADOS`: Terminated employees, with termination date (`DATA_DEMISSAO`) and status (`COMUNICADO_DE_DESLIGAMENTO`).
+* `FERIAS`: Employees on vacation and the number of vacation days (`DIAS_DE_FERIAS`).
+* `AFASTAMENTOS`: Employees on extended leave (e.g., maternity, medical).
+* `APRENDIZ`: Apprentice employees.
+* `ESTAGIO`: Interns.
+* `EXTERIOR`: Employees working abroad.
+* `BASE_DIAS_UTEIS`: Number of working days (`dias`) per union (`SINDICATO`).
+* `BASE_SINDICATO_X_VALOR`: Daily VR value (`VALOR`) per state (`UF`).
+
+**Query Structure:**
+The query must have three parts: an innermost subquery aliased as `aux`, a middle subquery aliased as `fin` that selects from `aux`, and an outer `SELECT` that selects from `fin`.
+
+---
+
+## Overall Structure
+
+The query can be visualized as three distinct layers, one nested inside the other:
+
+1.  **Layer 1: The Data Aggregation Core (`aux` subquery)**
+    * **Purpose**: To gather raw data about every employee from multiple source tables and create a set of status "flags" (e.g., `ATIVO`, `DESLIGADO`, `FERIAS`).
+    * **Method**: It starts with a master list of employee IDs (`MATRICULAS`) and uses `LEFT OUTER JOIN` to link to various tables containing status information.
+
+2.  **Layer 2: The Business Logic Engine (`fin` subquery)**
+    * **Purpose**: To consume the flags and raw data from the `aux` layer and perform intermediate, complex calculations.
+    * **Method**: It calculates the actual number of payable days (`dias_uteis_trabalhados`) and determines if an employee is eligible for the benefit at all (`BENEFICIO_ATIVO`).
+
+3.  **Layer 3: The Final Presentation Layer (Outer `SELECT`)**
+    * **Purpose**: To take the calculated data from the `fin` layer, perform final financial calculations (total cost, company cost, employee discount), and format the data into a human-readable report.
+    * **Method**: It uses `CASE` statements for conditional formatting and string concatenation to create a detailed observation column.
+
+---
+
+## Layer 1: Data Aggregation (`aux` Subquery)
+### **Part 1: The Innermost Subquery (`aux`)**
+
+This subquery will join all tables to gather raw data and generate a series of flags for each employee.
+This is the innermost subquery, responsible for creating a foundational dataset.
+
+### Tables and Joins
+
+It joins a total of **11 tables**. The central table is `MATRICULAS`, which presumably contains a master list of all employee registration numbers. Every other table is joined using a `LEFT OUTER JOIN`, which is a crucial choice. It ensures that **every employee from `MATRICULAS` is included in the result**, even if they don't have a corresponding entry in the other tables (e.g., an active employee won't be in the `DESLIGADOS` table).
+
+* `MATRICULAS`: Master employee list.
+* `ATIVOS`: Active employees, provides union info (`SINDICATO`) and status description (`DESC_SITUACAO`).
+* `DESLIGADOS`: Terminated employees, provides termination date.
+* `ADMISSAO_ABRIL`: New hires in the reference month.
+* `AFASTAMENTOS`: Employees on leave.
+* `EXTERIOR`: Employees working abroad.
+* `ESTAGIO`: Interns.
+* `BASE_DIAS_UTEIS`: Provides the standard number of workdays based on the union.
+* `BASE_SINDICATO_X_VALOR`: Provides the daily meal voucher value (`VALOR`) based on the geographical state (`UF`).
+* `FERIAS`: Employees on vacation, provides the number of vacation days.
+* `APRENDIZ`: Apprentices.
+
+### Calculated Columns and Status Flags
+
+This layer creates numerous columns, most of which are flags (1 for true, 0 for false) that will be used by the subsequent layers.
+
+* `matricula`: The employee's unique identifier.
+* `SINDICATO`: A `CASE` statement translates short union codes (e.g., `SINDPDSP`) into their full, descriptive names.
+* `ADMISSAO`: The employee's admission date. It uses `COALESCE` to default to `'2025-04-01'` if the date is not found.
+* `dias`: The standard number of business days for the month, typically based on the employee's union. If this value is missing, a subquery calculates the number of weekdays (Monday-Friday) in April 2025 as a fallback.
+* `VALOR`: The daily VR value. It uses `COALESCE` to assign a default value if one isn't found for the employee's state. The default is the absolute minimum non-zero value found in the `BASE_SINDICATO_X_VALOR` table.
+* `ATIVO`: Flag set to `1` if the employee exists in the `ATIVOS` table.
+* `DESLIGADO`: A sophisticated flag with three states:
+    * **0**: Not terminated or termination date is not applicable for this month's calculation.
+    * **1**: Terminated, and the termination date is **on or before the 15th** of the month. These employees likely receive no benefit for the month.
+    * **2**: Terminated, and the termination date is **after the 15th**. These employees likely receive a partial benefit.
+* `SINDICALIZADO`: Flag set to `1` if a union is specified for the employee.
+* `FERIAS`: Flag set to `1` if the employee is in the `FERIAS` table.
+* `AFASTADO`: Flag set to `1` if the employee is on leave.
+* `APRENDIZ`: Flag set to `1` if the employee is an apprentice.
+* `ADMITIDO_MES`: Flag set to `1` if the employee was hired in the reference month.
+* `EXTERIOR`: Flag set to `1` if the employee works abroad.
+* `ESTAGIO`: Flag set to `1` if the employee is an intern.
+
+1.  **Base Table and Joins:**
+    * Start with `MATRICULAS mat` as the base table.
+    * `LEFT OUTER JOIN` all other tables (`ATIVOS atv`, `DESLIGADOS des`, `ADMISSAO_ABRIL adm`, `AFASTAMENTOS afa`, `EXTERIOR ext`, `ESTAGIO est`, `BASE_DIAS_UTEIS dias`, `BASE_SINDICATO_X_VALOR vlr`, `FERIAS fer`, `APRENDIZ apr`) on `mat.matricula`. Join `dias` on `atv.sindicato` and `vlr` on `dias.UF`.
+
+2.  **Columns to Select in `aux`:**
+    * `matricula`: The employee ID.
+    * `SINDICATO`: A `CASE` statement based on `atv.SINDICATO`. Map the abbreviations to their full names:
+        * 'SINDPDSP' -> 'SINDPD SP - SIND.TRAB.EM PROC DADOS E EMPR.EMPRESAS PROC DADOS ESTADO DE SP.'
+        * 'SINDPDRJ' -> 'SINDPD RJ - SINDICATO PROFISSIONAIS DE PROC DADOS DO RIO DE JANEIRO'
+        * 'SITEPD' -> 'SITEPD PR - SIND DOS TRAB EM EMPR PRIVADAS DE PROC DE DADOS DE CURITIBA E REGIAO METROPOLITANA'
+        * 'SINDPPD' -> 'SINDPPD RS - SINDICATO DOS TRAB. EM PROC. DE DADOS RIO GRANDE DO SUL'
+    * `ADMISSAO`: Use `COALESCE` to get the admission date from `adm.ADMISSAO`. If it's `NULL`, default to `'2025-04-01'`.
+    * `dias`: Get the number of working days from `dias.dias`. If this is `NULL` or `0`, calculate the total number of working days (Monday-Friday) in April 2025.
+    * `end_of_month`: The date of the last day of April 2025.
+    * `VALOR`: Get the daily VR value from `vlr.VALOR`. If `NULL`, use a subquery to select the minimum non-zero `VALOR` from `BASE_SINDICATO_X_VALOR` as a fallback.
+    * **Flags (should return 1 for true, 0 for false):**
+        * `ATIVO`: `1` if a record exists in `ATIVOS`, `0` otherwise.
+        * `DESLIGADO`: A `CASE` statement with the following logic:
+            * Returns `1` (full month off) if `des.COMUNICADO_DE_DESLIGAMENTO` is 'OK' AND the `DATA_DEMISSAO` is before April 16, 2025.
+            * Returns `2` (partial month) if `des.COMUNICADO_DE_DESLIGAMENTO` is 'OK' AND the `DATA_DEMISSAO` is within April 2025 but after the 15th.
+            * Returns `0` otherwise.
+        * `SINDICALIZADO`: `1` if `atv.SINDICATO` is not `NULL`, `0` otherwise.
+        * `FERIAS`: `1` if a record exists in `FERIAS`, `0` otherwise.
+        * `AFASTADO`: `1` if a record exists in `AFASTAMENTOS`, `0` otherwise.
+        * `APRENDIZ`: `1` if a record exists in `APRENDIZ`, `0` otherwise.
+        * `ADMITIDO_MES`: `1` if a record exists in `ADMISSAO_ABRIL`, `0` otherwise.
+        * `EXTERIOR`: `1` if a record exists in `EXTERIOR`, `0` otherwise.
+        * `ESTAGIO`: `1` if `adm.cargo` or `est.TITULO_DO_CARGO` is 'ESTAGIARIO', `0` otherwise.
+    * Also select `des.DATA_DEMISSAO`, `atv.DESC_SITUACAO`, and `fer.DIAS_DE_FERIAS` to be used by the next layer.
+
+---
+
+## Layer 2: Business Logic (`fin` Subquery)
+### **Part 2: The Middle Subquery (`fin`)**
+This middle layer acts as the brain of the operation, interpreting the flags from the `aux` layer to make crucial decisions.
+This subquery selects all columns from `aux` and adds two new calculated columns based on the flags generated in `aux`.
+
+### Key Calculations
+
+* **`BENEFICIO_ATIVO`**: This is the master switch for benefit eligibility. An employee is considered **ineligible** (`0`) if they meet two conditions:
+    1.  They fall into any of these categories: not in the `ATIVOS` table, terminated (`DESLIGADO=1`), on leave, an apprentice, working abroad, or an intern.
+    2.  AND they were **not** hired in the current month (`ADMITIDO_MES=0`).
+    This logic correctly handles cases where a newly hired intern might still be eligible, while a long-term intern is not. Everyone else is eligible (`1`).
+
+* **`dias_uteis_trabalhados`**: This column calculates the number of days the employee is actually entitled to receive the benefit for. It uses a `CASE` statement to handle different scenarios:
+    * **Terminated after the 15th (`DESLIGADO=2`)**: It counts the actual number of weekdays from their admission date to their termination date.
+    * **Terminated on or before the 15th (`DESLIGADO=1`)**: The value is `0`.
+    * **On Vacation (`FERIAS=1`)**: A special rule is applied. The number of payable days is reduced based on the vacation duration (e.g., for 10 days of vacation, they get 12 days of benefit, implying a total of 22 working days in the month).
+    * **Default Case (Normal Employee)**: It counts all weekdays from their admission date to the end of the reference month.
+
+
+1.  **Columns to Select in `fin`:**
+    * Select all columns from `aux` (`aux.*`).
+    * `BENEFICIO_ATIVO`: A flag to determine eligibility. It should be `0` if the employee meets any of the exclusion criteria AND was not admitted in the current month (`ADMITIDO_MES=0`). Otherwise, it should be `1`. The exclusion criteria are: `ATIVO=0`, `DESLIGADO=1`, `AFASTADO=1`, `APRENDIZ=1`, `EXTERIOR=1`, or `ESTAGIO=1`.
+    * `dias_uteis_trabalhados`: The number of days the employee should receive VR for. This is a `CASE` statement:
+        * If `DESLIGADO=2` (partial termination), count the working days (Mon-Fri) from their `ADMISSAO` date to their `DATA_DEMISSAO`. Use `GENERATE_SERIES` for this.
+        * If `DESLIGADO=1`, the value is `0`.
+        * If `FERIAS=1`, apply the following fixed mapping based on `DIAS_DE_FERIAS`: 5 days -> 15, 10 -> 12, 15 -> 9, 20 -> 5. `ELSE 0`.
+        * For all other cases, count the working days (Mon-Fri) from their `ADMISSAO` to the `end_of_month`. Use `GENERATE_SERIES`.
+
+
+---
+
+## Layer 3: Presentation and Final Calculations (Outer `SELECT`)
+### **Part 3: The Outermost `SELECT` Statement**
+This is the final, outermost query that formats the results for the end-user.
+This is the final output. It selects columns from `fin`, formats them, and performs the final calculations.
+
+* `Matricula`: The employee ID.
+* `Admissão`: Shows the admission date only if the employee was hired in the reference month; otherwise, it displays 'N/D'.
+* `Sindicato do Colaborador`: The full union name, defaulting to 'N/D'.
+* `Competência`: A hardcoded string `'05/2025'` indicating the reference period.
+* `Dias`: The **final number of days** for payment. It calculates `least(fin.dias, fin.dias_uteis_trabalhados)`, which takes the **smaller** of the standard workdays (`dias`) and the individually calculated payable days (`dias_uteis_trabalhados`). This value is set to `0` if `BENEFICIO_ATIVO` is `0`.
+* `VALOR DIÁRIO VR`: The daily benefit amount, zeroed out if the employee is not eligible.
+* `TOTAL`: The gross benefit amount, calculated as $Dias \times \text{VALOR DIÁRIO VR}$.
+* `Custo empresa`: The company's portion of the cost, calculated as $80\%$ of the `TOTAL`.
+* `Desconto profissional`: The employee's contribution, deducted from their salary, calculated as $20\%$ of the `TOTAL`.
+* `OBS GERAL`: This is a highly informative, dynamically generated string. It concatenates various pieces of information based on the flags set in the lower layers to provide a quick, at-a-glance summary of the employee's status for the month (e.g., "Sem observação (Não está ativo), Ativo, Ferias (10 dias), Sem sindicato").
+
+1.  **Columns to Select:**
+    * `Matricula`: `fin.matricula`.
+    * `Admissão`: If `ADMITIDO_MES=1`, format the `ADMISSAO` date as `DD/MM/YYYY`. Otherwise, display the string 'N/D'.
+    * `"Sindicato do Colaborador"`: `fin.SINDICATO`, showing 'N/D' if `NULL`.
+    * `"Competência"`: The hardcoded string `'05/2025'`.
+    * `Dias`: If `BENEFICIO_ATIVO=1`, this is the lesser value between `fin.dias` (standard days from union) and `fin.dias_uteis_trabalhados`. Otherwise, `0`. Use the `least()` function.
+    * `"VALOR DIÁRIO VR"`: If `BENEFICIO_ATIVO=1`, this is `fin.VALOR`. Otherwise, `0.0`.
+    * `TOTAL`: Calculated as `Dias * "VALOR DIÁRIO VR"`. If `BENEFICIO_ATIVO=0`, this is `0.0`.
+    * `"Custo empresa"`: Calculated as `TOTAL * 0.8`. If `BENEFICIO_ATIVO=0`, this is `0.0`.
+    * `"Desconto profissional"`: Calculated as `TOTAL * 0.2`. If `BENEFICIO_ATIVO=0`, this is `0.0`.
+    * `"OBS GERAL"`: A concatenated string providing a summary of the employee's status. Use `COALESCE(fin.DESC_SITUACAO,'Sem observação (Não está ativo)')` as the base and append the following strings based on flags from `fin`:
+        * If `ATIVO = 1`, append ', Ativo'.
+        * If `DESLIGADO = 1`, append ', Desligado'.
+        * If `DESLIGADO = 2`, append ', Desligado parcial'.
+        * If `FERIAS = 1`, append ', Ferias (' || fin.DIAS_DE_FERIAS || ' dias)'.
+        * If `AFASTADO = 1`, append ', Afastado'.
+        * If `APRENDIZ = 1`, append ', Aprendiz'.
+        * If `ESTAGIO = 1`, append ', Estagiário'.
+        * If `EXTERIOR = 1`, append ', Exterior'.
+        * If `SINDICALIZADO = 0`, append ', Sem sindicato'.
+
+2.  **Final Clause:**
+    * Order the final result set by `matricula` in ascending order.
+
+Finally, the entire result set is sorted by `matricula` for organized and predictable output.
+
+===

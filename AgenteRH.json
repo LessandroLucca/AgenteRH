@@ -1,0 +1,771 @@
+{
+  "name": "AgenteRH",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "35ea70c4-8669-4975-a68d-bbaa094713c0",
+              "name": "directory",
+              "type": "string",
+              "value": "={{ $('Quando_inclui_ZIP').params.path }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b906babd-19f7-4373-8f63-5988b1ab1f11",
+      "name": "Cria variável diretorio",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        200,
+        300
+      ],
+      "typeVersion": 3.3
+    },
+    {
+      "parameters": {
+        "triggerOn": "folder",
+        "path": "E:\\shared",
+        "events": [
+          "add"
+        ],
+        "options": {
+          "awaitWriteFinish": true
+        }
+      },
+      "id": "7bea1c55-d728-484d-a2ba-c058c4918eed",
+      "name": "Quando_inclui_ZIP",
+      "type": "n8n-nodes-base.localFileTrigger",
+      "position": [
+        -240,
+        300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        100
+      ],
+      "id": "200ac9da-3f9c-4261-af2b-f46f457fe3a3",
+      "name": "Quando acionado via CMD"
+    },
+    {
+      "parameters": {
+        "command": "=E: && cd {{ $json.directory }} | ls -p {{ $json.directory }} | grep zip | grep -v / | xargs 7z -so e"
+      },
+      "id": "65523cd2-993e-4b4f-8315-a12919913966",
+      "name": "CMD extrai conteudo do ZIP",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        420,
+        300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "e68866f8-7ecb-48f5-9426-c0255be0a1ca",
+              "leftValue": "={{ $json.schema }}",
+              "rightValue": "={{ 1 }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4b1113d2-9ca3-48fe-9744-820d61bccbc1",
+              "leftValue": "={{ $json.rules }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "50b5ff72-5f8b-4646-93a7-dac7544fc6f7",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "08c40687-6aa3-41dc-a1e0-0aadfba2388f",
+      "name": "IF dados preenchidos",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        860,
+        300
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ad893795-cae8-4418-99e0-2c68126337d3",
+              "name": "output",
+              "type": "string",
+              "value": "={{ $json.stdout.split('===')[0] }}"
+            },
+            {
+              "id": "02be2b22-11b5-4b83-b7b4-9884e7ba99c0",
+              "name": "rules",
+              "value": "={{ $json.stdout.split('===')[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "11e376eb-1c45-4aa6-a36f-ec0609e1d822",
+              "name": "schema",
+              "value": "={{ $json.stdout.split('===')[2] }}",
+              "type": "string"
+            },
+            {
+              "id": "e46f661e-04d0-4f3c-8596-81d35f5fefa3",
+              "name": "tables",
+              "value": "={{ $json.stdout.split('===')[3] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6802b286-4ed1-44d0-8542-17d5a03e1ebf",
+      "name": "Cria a variaveis",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        640,
+        300
+      ],
+      "typeVersion": 3.3
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Dados incompletos ou inválidos",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        860,
+        600
+      ],
+      "id": "d4ddf208-a8a1-46a8-aab5-22d9352d875f",
+      "name": "FIM Mansagem de erro"
+    },
+    {
+      "parameters": {
+        "path": "c66e2849-b8ef-4ad3-abcb-668ea9c3c90d",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        500
+      ],
+      "id": "2466a3da-410a-43dd-b091-2a5d1e5da7b1",
+      "name": "Quando acessa a URL",
+      "webhookId": "c66e2849-b8ef-4ad3-abcb-668ea9c3c90d"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "01234567890",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1180,
+        560
+      ],
+      "id": "45c0900e-b4a3-47f2-b6de-070109958e06",
+      "name": "Memory",
+      "credentials": {
+        "postgres": {
+          "id": "3CTa9KB1qrZjkVt8",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "E:\\VR_MENSAL_05.2025.csv",
+        "dataPropertyName": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2040,
+        520
+      ],
+      "id": "d599b0f2-ce2c-4bd3-8444-394c6f51907a",
+      "name": "Grava CSV no disco"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1520,
+        640
+      ],
+      "id": "9ba4394b-be40-4364-b4a6-6ca54438eaff",
+      "name": "Execução da SQL",
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "3CTa9KB1qrZjkVt8",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1820,
+        520
+      ],
+      "id": "4591135b-96fa-43e8-9978-a51a7eda60c1",
+      "name": "Converte em CSV"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1820,
+        720
+      ],
+      "id": "d5a13584-5f66-4748-bcfd-840177f2e70a",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "E:\\VR MENSAL 05.2025.xlsx",
+        "dataPropertyName": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2040,
+        720
+      ],
+      "id": "f0f4da41-a313-4568-a4a3-f5c360539a7e",
+      "name": "Grava XLSX no disco"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "e68866f8-7ecb-48f5-9426-c0255be0a1ca",
+              "leftValue": "={{ $json.schema }}",
+              "rightValue": "={{ 1 }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "367c8117-7645-405a-acbc-4be10785c195",
+              "leftValue": "={{ $json.tables }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4b1113d2-9ca3-48fe-9744-820d61bccbc1",
+              "leftValue": "={{ $json.rules }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "7b7fc785-2d9a-4d5e-9339-e4e1a5403b60",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "07d77979-89ab-4db0-997f-4c0c351f82c2",
+      "name": "DEBUG BYPASS",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        860,
+        140
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "var text=$input.first().json.output;\nconst sqlRegex = /(SELECT|INSERT INTO|UPDATE|DELETE FROM)\\s+[^;]+;?/gis;\nlet match;\nvar extractedSqlQueries = [];\nwhile ((match = sqlRegex.exec(text)) !== null) {\n  extractedSqlQueries.push(match[0].trim());\n}\nlet cleanedString = extractedSqlQueries.join(\" \");\ncleanedString = cleanedString.replace(/\\s+/g, ' ');\ncleanedString = cleanedString.trim();\nreturn [{ json: { output: cleanedString } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        120
+      ],
+      "id": "4fb23596-d7f2-4d4d-9809-573035310d76",
+      "name": "Clean SQL code"
+    },
+    {
+      "parameters": {
+        "jsCode": "var text=\"Correct the following errors returned by SGDB \";\ntext+=\"over the original SELECT clause generated.\\n\";\ntext+=\"Resolve the following erros to turn it executable. \\n\";\ntext+=\"You must preserve the original SELECT structure based on layers. \\n\";\ntext+=\"Rewrite wrong conditions if required. \\n\";\ntext+=$input.first().json.message + \"\\n\"\ntext+=$input.first().json.error.description;\nreturn [{ json: { output: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        900
+      ],
+      "id": "29560c85-1b7c-4239-8ae0-163913ea0f12",
+      "name": "Feedback Error and Retry"
+    },
+    {
+      "parameters": {
+        "model": "mistral:7b",
+        "options": {
+          "temperature": 0.4,
+          "numCtx": 4096
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        560
+      ],
+      "id": "ccc43456-153e-4abd-809b-ca5a76acf860",
+      "name": "Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "7MiU1q9qyRP0THPM",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "e68866f8-7ecb-48f5-9426-c0255be0a1ca",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "={{ 1 }}",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "302a5331-30a6-448f-b484-460fbbd342cf",
+      "name": "IF EMPTY RESET",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1500,
+        360
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "description": "Think about all the relations envolving key columns between all tables, before generate the required single unique query."
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        560
+      ],
+      "id": "4add9463-7564-47de-8243-7bc6a6de0416",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The following tables exists in a database, each containing data that will be used to develop a SQL query to obtain the results of the TASK specified ahead.\n\n## TABLE NAMES LIST\n{{ $json.tables }}\n\n## DETAILED DATABASE SCHEMA \n{{ $json.schema }}\n\n## REQUIREMENTS AND RULES TO GENERATE SELECT QUERY\n{{ $json.rules }}\n\n## RESTRICTIONS\n1. Never change the table names specified.\n2. Use the table names exactly literally as specified ahead.\n3. Do not transtalate nothing of these instructions text.\n4. You must always use LEFT JOIN for all relations.\n5. You must obtain all data of all tables, without exceptions.\n6. Do not output explanations neither your thinking.\n7. Do not output the thinking.",
+        "options": {
+          "systemMessage": "You are a Database Assistant which generates SELECT SQL queries, composed by unique single SELECT clause, to retrieve data of structured relational database tables. You must generate a full unified query to retrieve all data as flat planned dataset. Must convert user requests into an single SELECT clause that queries database information.\n\n## CRITICAL OPERATIONAL RULES:\n- Apply specific filters and conditions to narrow results\n- Always focus on delivering relevant and targeted results\n\n## CRITICAL: OUTPUT FORMAT\n- Output ONLY the SQL query\n- Output MUST START WITH \\\"SELECT\\\" clause \n- NO explanations, descriptions, or additional text\n- NO ouput you thinking\n- Just output the raw of SQL query string generated, without any prefixes\n\n## STRICT RULES:\n1. ONLY GENERATE SELECT queries - NEVER USE CREATE/INSERT/UPDATE/DELETE/DROP/ALTER\n2. Table names: do not use double quotes\n3. Column names with spaces, special characters or alias, then use double quotes (\\\"matrícula\\\"), otherwise do not use;\n4. Always end query with semicolon\n\n## IMPORTANT REQUIREMENTS:\nOutput ONLY the SQL query, nothing else\nOUTPUT ONLY SQL IN RESPONSE\nOUTPUT JUST THE SQL"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1080,
+        280
+      ],
+      "id": "8533f5bc-47d2-4197-9545-73550eaba977",
+      "name": "AI SQL Generator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=##SELECT SQL QUERY THAT MUST BE CORRECTED\n{{ $json.output }}\n\n## Use the following orientations and references to guide you\nCorrect the above specified errors over the SELECT query\nDo not make big changes over the structure of original query\nDo not split the main query \nAdd missing field if required \nAdd missing LEFT JOIN tables on base SELECT if required \nReview SQL structure and relations to respect next rules\n\n## THE FOLLOWING RULES IS IMPORTANT AND YOU MUST FOLLOW THESE REQUIREMENTS TO GENERATE THE CORRECT SELECT SQL QUERY CLAUSE\n{{ $('IF dados preenchidos').item.json.rules }}\n\n## HERE IS THE SCHEMA OF TABLES FOR REFERENCE AS GUIDE\n{{ $('IF dados preenchidos').item.json.schema }}",
+        "options": {
+          "systemMessage": "You are a Database Specialist which review and repair wrong SELECT SQL queries. You must analise the error and the SELECT, then generate a corrected fully functional query capable to retrieve all data as defined rules.\n\n## CRITICAL OPERATIONAL RULES:\n- Apply specific filters and conditions to narrow results\n- Always focus on delivering relevant and targeted results\n\n## CRITICAL: OUTPUT FORMAT\n- Output ONLY the SQL query\n- Output MUST START WITH \\\"SELECT\\\" clause \n- NO explanations, descriptions, or additional text\n- NO ouput you thinking\n- Just output the raw of SQL query string generated, without any prefixes\n\n## STRICT RULES:\n1. ONLY GENERATE SELECT queries - NEVER USE CREATE/INSERT/UPDATE/DELETE/DROP/ALTER\n2. Table names: do not use double quotes\n3. Column names with spaces, special characters or alias, then use double quotes (\\\"matrícula\\\"), otherwise do not use;\n4. Always end query with semicolon\n\n## IMPORTANT REQUIREMENTS:\nOutput ONLY the SQL query, nothing else\nOUTPUT ONLY SQL IN RESPONSE\nOUTPUT JUST THE SQL"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1040,
+        840
+      ],
+      "id": "04aed197-c0b4-4337-a18f-e4916fb62d07",
+      "name": "AI SQL Rewriter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cria variável diretorio": {
+      "main": [
+        [
+          {
+            "node": "CMD extrai conteudo do ZIP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quando_inclui_ZIP": {
+      "main": [
+        [
+          {
+            "node": "Cria variável diretorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quando acionado via CMD": {
+      "main": [
+        [
+          {
+            "node": "Cria variável diretorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CMD extrai conteudo do ZIP": {
+      "main": [
+        [
+          {
+            "node": "Cria a variaveis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF dados preenchidos": {
+      "main": [
+        [
+          {
+            "node": "AI SQL Generator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FIM Mansagem de erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria a variaveis": {
+      "main": [
+        [
+          {
+            "node": "IF dados preenchidos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "DEBUG BYPASS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quando acessa a URL": {
+      "main": [
+        [
+          {
+            "node": "Cria variável diretorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execução da SQL": {
+      "main": [
+        [
+          {
+            "node": "Converte em CSV",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Feedback Error and Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converte em CSV": {
+      "main": [
+        [
+          {
+            "node": "Grava CSV no disco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Grava XLSX no disco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DEBUG BYPASS": {
+      "main": [
+        [
+          {
+            "node": "Clean SQL code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean SQL code": {
+      "main": [
+        [
+          {
+            "node": "IF EMPTY RESET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF EMPTY RESET": {
+      "main": [
+        [
+          {
+            "node": "Cria variável diretorio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execução da SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI SQL Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI SQL Rewriter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI SQL Generator",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI SQL Rewriter",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI SQL Generator",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "AI SQL Rewriter",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI SQL Generator": {
+      "main": [
+        [
+          {
+            "node": "Clean SQL code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feedback Error and Retry": {
+      "main": [
+        [
+          {
+            "node": "AI SQL Rewriter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI SQL Rewriter": {
+      "main": [
+        [
+          {
+            "node": "Clean SQL code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "83edb2dc-8767-486f-82b2-2c4fa4794154",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e567c957e236940ad5ce1a4a29056dc91f26e0900f0f2c8cf78157327d458510"
+  },
+  "id": "YpjkKfVPxj80mwAQ",
+  "tags": []
+}
